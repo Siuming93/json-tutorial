@@ -112,12 +112,20 @@ static void test_parse_number_value()
 	TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
 }
 
+static void test_parse_number_too_big()
+{
+	lept_value v;
+	EXPECT_EQ_INT(LEPT_PARSE_NUMBER_TOO_BIG, lept_parse(&v, "-1e309"));
+	EXPECT_EQ_INT(LEPT_PARSE_NUMBER_TOO_BIG, lept_parse(&v, "1e30009"));
+}
+
 static void test_parse() {
 	test_parse_expect_literal();
 	test_parse_expect_value();
 	test_parse_number_value();
 	test_parse_root_not_singular();
 	test_parse_invalid_value();
+	test_parse_number_too_big();
 }
 
 int main(){
