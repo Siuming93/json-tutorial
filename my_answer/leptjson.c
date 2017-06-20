@@ -39,6 +39,8 @@ static void* lept_context_push(lept_context* c, size_t size)
 static void* lept_context_pop(lept_context* c, rsize_t size)
 {
 	assert(c->top >= size);
+	c->top -= size;
+	return memcpy(c->stack + c->top, size);
 }
 
 /*ws = *(%x20 / %x09 / %x0A / %x0D) */
