@@ -33,6 +33,7 @@ static void* lept_context_push(lept_context* c, size_t size)
 		c->stack = (char*)realloc(c->stack, c->size);
 	}
 	ret = c->stack + c->top;
+	c->top += size;
 	return ret;
 }
 
@@ -146,32 +147,29 @@ static int lept_parse_number(lept_context* c, lept_value* v)
 		return LEPT_PARSE_NUMBER_TOO_BIG;
 	return LEPT_PARSE_OK;
 }
+#define PUTC(c, ch) do{ *(char*) lept_context_push(c, sizeof(ch)) = ch; } while(0)
 static int lept_parse_string(lept_context* c, lept_value* v)
 {
 	EXPECT(c, '\"');
-	size_t len = 0;
-	while(*c->json != '\0')
+	char *p = c->json;
+	size_t head = c->top, len;
+	while(*p != '\0')
 	{
-		switch(*c->json)
+		char ch = *(p++);
+		switch(ch)
 		{
 			case '\"':
-				v->u.s.s = (char*)malloc(len + 1);
-				memcpy(v->u.s.s, lept_context_pop(c, len), len);
-				v->u.s.s[len] = '\0';
-				v->u.s.len = len;
-				c->json++;
+				len = c->top - head;
+				lept_set_string(v, lept_context_pop(c, len), len);
 				v->type = LEPT_STRING;
+				c->json = p;
 				return LEPT_PARSE_OK;
-				break;
 			default:
-				len++;
-				char* top = lept_context_push(c, 1); 
-				*top = *c->json;
-				c->top++;
-				c->json++;
+				PUTC(c, ch);
 				break;
 		}
 	}
+	c->top = head;
 	return LEPT_PARSE_EXPECT_VALUE;
 }
 void lept_free(lept_value* v)
