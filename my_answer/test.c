@@ -134,6 +134,13 @@ static void test_access_string()
 	lept_free(&v);
 }
 
+static void test_parse_string_value()
+{
+	lept_value v;
+	lept_parse(&v, "\"Hello\"");
+	EXPECT_EQ_STRING("Hello", lept_get_string(&v), lept_get_string_length(&v));
+}
+
 static void test_parse() {
 	test_parse_expect_literal();
 	test_parse_expect_value();
@@ -142,6 +149,7 @@ static void test_parse() {
 	test_parse_invalid_value();
 	test_parse_number_too_big();
 	test_access_string();
+	test_parse_string_value();
 }
 
 int main(){

@@ -39,8 +39,7 @@ static void* lept_context_push(lept_context* c, size_t size)
 static void* lept_context_pop(lept_context* c, rsize_t size)
 {
 	assert(c->top >= size);
-	c->top -= size;
-	return memcpy(c->stack + c->top, size);
+	return c->stack + (c->top -= size);
 }
 
 /*ws = *(%x20 / %x09 / %x0A / %x0D) */
@@ -86,7 +85,6 @@ static int lept_parse_true(lept_context* c, lept_value* v)
 	v->type = LEPT_TRUE;
 	return LEPT_PARSE_OK;
 }
-
 /*false = "false"*/
 static int lept_parse_false(lept_context* c, lept_value* v)
 {
@@ -97,10 +95,8 @@ static int lept_parse_false(lept_context* c, lept_value* v)
 	v->type = LEPT_FALSE;
 	return LEPT_PARSE_OK;
 }
-
 #define ISDIGIT(ch) (ch >= '0' && ch <= '9')
 #define ISDIGIT1TO9(ch) (ch >= '1' && ch <='9') 
-
 static int lept_parse_number(lept_context* c, lept_value* v)
 {
 	int step = 0;
@@ -150,7 +146,34 @@ static int lept_parse_number(lept_context* c, lept_value* v)
 		return LEPT_PARSE_NUMBER_TOO_BIG;
 	return LEPT_PARSE_OK;
 }
-
+static int lept_parse_string(lept_context* c, lept_value* v)
+{
+	EXPECT(c, '\"');
+	size_t len = 0;
+	while(*c->json != '\0')
+	{
+		switch(*c->json)
+		{
+			case '\"':
+				v->u.s.s = (char*)malloc(len + 1);
+				memcpy(v->u.s.s, lept_context_pop(c, len), len);
+				v->u.s.s[len] = '\0';
+				v->u.s.len = len;
+				c->json++;
+				v->type = LEPT_STRING;
+				return LEPT_PARSE_OK;
+				break;
+			default:
+				len++;
+				char* top = lept_context_push(c, 1); 
+				*top = *c->json;
+				c->top++;
+				c->json++;
+				break;
+		}
+	}
+	return LEPT_PARSE_EXPECT_VALUE;
+}
 void lept_free(lept_value* v)
 {
 	assert(v != NULL);
@@ -158,7 +181,6 @@ void lept_free(lept_value* v)
 		free(v->u.s.s);
 	v->type = LEPT_NULL;
 }
-
 static int lept_parse_value(lept_context* c, lept_value* v)
 {
 	switch (*c->json)
@@ -167,6 +189,7 @@ static int lept_parse_value(lept_context* c, lept_value* v)
 		case '\0':	return LEPT_PARSE_EXPECT_VALUE;
 		case 't':	return lept_parse_literal(c, v, "true", LEPT_TRUE);
 		case 'f':	return lept_parse_literal(c, v, "false", LEPT_FALSE);
+		case '\"': 	return lept_parse_string(c, v);
 		default:
 			return lept_parse_number(c, v);
 	}
