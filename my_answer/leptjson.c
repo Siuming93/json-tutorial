@@ -152,7 +152,7 @@ static int lept_parse_string(lept_context* c, lept_value* v)
 {
 	EXPECT(c, '\"');
 	char *p = c->json;
-	size_t head = c->top, len;
+	size_t head = c->top, len, skip = 0;
 	while(*p != '\0')
 	{
 		char ch = *(p++);
@@ -164,6 +164,37 @@ static int lept_parse_string(lept_context* c, lept_value* v)
 				v->type = LEPT_STRING;
 				c->json = p;
 				return LEPT_PARSE_OK;
+			case '\\':
+				ch = *(p++);
+				switch(ch)
+				{
+					case 'n':
+						PUTC(c, (char)'\n');
+						break;
+					case '\"':
+						PUTC(c, (char)'\"');
+						break;
+					case '\\':
+						PUTC(c, (char)'\\');
+						break;
+					case 'b':
+						PUTC(c, (char)'\b');
+						break;	
+					case 'r':
+						PUTC(c, (char)'\r');
+						break;	
+					case 't':
+						PUTC(c, (char)'\t');
+						break;
+					case 'f':
+						PUTC(c, (char)'\f');
+						break;		
+					case '\/':
+						PUTC(c, (char)'\/');
+						break;	
+					// "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\""
+				}
+				break;
 			default:
 				PUTC(c, ch);
 				break;
