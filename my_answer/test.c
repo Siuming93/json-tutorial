@@ -151,6 +151,32 @@ static void test_parse_string() {
     TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
 }
 
+static void test_access_array()
+{
+	lept_value v;
+	lept_value v1, v2, v3, v4;
+	lept_parse(&v1, "12");
+	lept_parse(&v2, "-0");
+	lept_set_string(&v3, "hello", 5);
+	lept_set_string(&v4, "", 0);
+	lept_value arr[] = { v1,v2,v3,v4 };
+	lept_set_array(&v, arr, 4);
+	EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
+	lept_value va = v.u.a.e[0];
+	EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(&va));
+	EXPECT_EQ_DOUBLE(12, va.u.n);
+	va = v.u.a.e[1];
+	EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(&va));
+	EXPECT_EQ_DOUBLE(0, va.u.n);
+	va = v.u.a.e[2];
+	EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&va));
+	EXPECT_EQ_STRING("hello", lept_get_string(&va), lept_get_string_length(&va));
+	va = v.u.a.e[3];
+	EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&va));
+	EXPECT_EQ_STRING("", lept_get_string(&va), lept_get_string_length(&va));
+	lept_free(&v);
+}
+
 #define TEST_ERROR(error, json)\
     do {\
         lept_value v;\
@@ -170,6 +196,7 @@ static void test_parse() {
 	test_parse_number_too_big();
 	test_access_string();
 	test_parse_string();
+	test_access_array();
 }
 
 int main(){

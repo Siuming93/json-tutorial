@@ -192,7 +192,6 @@ static int lept_parse_string(lept_context* c, lept_value* v)
 					case '\/':
 						PUTC(c, (char)'\/');
 						break;	
-					// "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\""
 				}
 				break;
 			default:
@@ -208,6 +207,23 @@ void lept_free(lept_value* v)
 	assert(v != NULL);
 	if (v->type == LEPT_STRING)
 		free(v->u.s.s);
+	if (v->type == LEPT_ARRAY)
+	{
+		for (int i = 0; i < v->u.a.size; i++)
+		{
+			lept_free(v->u.a.e + i);
+		}
+		free(v->u.a.e);
+	}
+	if (v->type == LEPT_OBJECT)
+	{
+		for (int i = 0; i < v->u.o.size; i++)
+		{
+			lept_free(&(v->u.o.m + i)->v);
+			free((v->u.o.m + i)->k);
+		}
+		free(v->u.o.m);
+	}
 	v->type = LEPT_NULL;
 }
 static int lept_parse_value(lept_context* c, lept_value* v)
@@ -287,4 +303,27 @@ void lept_set_string(lept_value* v, const char* s, rsize_t len)
 	v->u.s.s[len] = '\0';
 	v->u.s.len = len;
 	v->type = LEPT_STRING;
+}
+
+const lept_value* lept_get_array(lept_value* v)
+{
+	assert(v != NULL && v->type == LEPT_ARRAY);
+	return v->u.a.e;
+}
+size_t lept_get_array_size(lept_value* v)
+{
+	assert(v != NULL && v->type == LEPT_ARRAY);
+	return v->u.a.size;
+}
+void lept_set_array(lept_value* v, lept_value* arr, size_t size)
+{
+	assert(v != NULL && (arr != NULL || size == 0));
+	lept_free(v);
+	v->u.a.e = (lept_value*)malloc(sizeof(lept_value)*size);
+	for (int i = 0; i < size; i++)
+	{
+		memcpy(v->u.a.e + i, &arr[i], sizeof(lept_value));
+	}
+	v->u.a.size = size;
+	v->type = LEPT_ARRAY;
 }
