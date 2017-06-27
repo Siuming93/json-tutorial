@@ -28,7 +28,7 @@ static void* lept_context_push(lept_context* c, size_t size)
 			c->size = LEPT_PARSE_STACK_INIT_SIZE;
 		while (c->top + size >= c->size)
 		{
-			c->size << 1;	/*c->size *2 */
+			c->size << 1;	/*c->size *2 *//*当分配空间为1.5倍时,有机会重用已经分配的内存*/
 		}
 		c->stack = (char*)realloc(c->stack, c->size);
 	}
@@ -37,7 +37,7 @@ static void* lept_context_push(lept_context* c, size_t size)
 	return ret;
 }
 
-static void* lept_context_pop(lept_context* c, rsize_t size)
+static void* lept_context_pop(lept_context* c, size_t size)
 {
 	assert(c->top >= size);
 	return c->stack + (c->top -= size);
@@ -202,6 +202,36 @@ static int lept_parse_string(lept_context* c, lept_value* v)
 	c->top = head;
 	return LEPT_PARSE_EXPECT_VALUE;
 }
+static int lept_parse_array(lept_context* c, lept_value* v)
+{
+	EXPECT(c, '[');
+	size_t head = c->top, size;
+	while (1)
+	{
+		char ch = *c->json;
+		if (ch == ']')
+		{
+			size = c->top - head;
+			size_t arrSize = size / sizeof(lept_value);
+			lept_set_array(v, lept_context_pop(c, size), arrSize);
+			c->json++;
+			return LEPT_PARSE_OK;
+		}
+		if (ch == ',')
+		{
+			c->json++;
+		}
+		lept_value e;
+		int err;
+		if ((err = lept_parse_value(c, &e)) != LEPT_PARSE_OK)
+		{
+			size = c->top - head;
+			lept_context_pop(c, size);
+			return err;
+		}
+		memcpy(lept_context_push(c, sizeof(lept_value)), &e, sizeof(lept_value));
+	}
+}
 void lept_free(lept_value* v)
 {
 	assert(v != NULL);
@@ -235,6 +265,7 @@ static int lept_parse_value(lept_context* c, lept_value* v)
 		case 't':	return lept_parse_literal(c, v, "true", LEPT_TRUE);
 		case 'f':	return lept_parse_literal(c, v, "false", LEPT_FALSE);
 		case '\"': 	return lept_parse_string(c, v);
+		case '[':	return lept_parse_array(c, v);
 		default:
 			return lept_parse_number(c, v);
 	}
@@ -273,6 +304,16 @@ lept_type lept_get_type(const lept_value* v)
 	return v->type;
 }
 
+int lept_get_boolen(const lept_value* v) 
+{
+	assert(v != NULL && (v->type == LEPT_FALSE || v->type == LEPT_TRUE));
+	return v->type == LEPT_FALSE ? 0 : 1;
+}
+void lept_set_boolen(lept_value* v, int b)
+{
+	assert(v != NULL);
+	v->type = b == 0 ? LEPT_FALSE : LEPT_TRUE;
+}
 double lept_get_number(const lept_value* v)
 {
 	assert(v != NULL && v->type == LEPT_NUMBER);
@@ -280,7 +321,7 @@ double lept_get_number(const lept_value* v)
 }
 void lept_set_number(lept_value* v, double n)
 {
-	assert(v != NULL && v->type == LEPT_NUMBER);
+	assert(v != NULL);
 	v->u.n = n;
 }
 
@@ -327,3 +368,7 @@ void lept_set_array(lept_value* v, lept_value* arr, size_t size)
 	v->u.a.size = size;
 	v->type = LEPT_ARRAY;
 }
+
+const lept_member* lept_get_object_value(const lept_value* v);
+size_t lept_get_object_size(const lept_value* v);
+void lept_set_object(lept_value* v, const lept_member* m, size_t size);

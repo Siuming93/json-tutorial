@@ -74,6 +74,8 @@ static void test_parse_invalid_value()
 	TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "inf");
 	TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "nan");
 
+	/*invalida array*/
+	TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "[12,22,false,]");
 }
 
 static void test_parse_root_not_singular()
@@ -177,6 +179,31 @@ static void test_access_array()
 	lept_free(&v);
 }
 
+static void test_parse_array()
+{
+	lept_value v;
+	lept_parse(&v, "[12,22,false,\"hello\"]");
+	EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
+	EXPECT_EQ_INT(4, lept_get_array_size(&v));
+	EXPECT_EQ_DOUBLE(12, lept_get_number(v.u.a.e));
+	EXPECT_EQ_DOUBLE(22, lept_get_number(v.u.a.e + 1));
+	EXPECT_EQ_INT(0, lept_get_boolen(v.u.a.e + 2));
+	EXPECT_EQ_STRING("hello", lept_get_string(v.u.a.e + 3), lept_get_string_length(v.u.a.e + 3));
+	lept_parse(&v, "[]");
+	EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
+	EXPECT_EQ_INT(0, lept_get_array_size(&v));
+}
+
+static void test_access_object()
+{
+
+}
+
+static void test_parse_object()
+{
+
+}
+
 #define TEST_ERROR(error, json)\
     do {\
         lept_value v;\
@@ -197,6 +224,7 @@ static void test_parse() {
 	test_access_string();
 	test_parse_string();
 	test_access_array();
+	test_parse_array();
 }
 
 int main(){
